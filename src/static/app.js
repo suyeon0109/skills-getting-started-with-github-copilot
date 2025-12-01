@@ -27,7 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="participants-section">
               <strong>Participants:</strong>
               <ul class="participants-list">
-                ${details.participants.map(p => `<li>${p}</li>`).join("")}
+                ${details.participants.map(p => `<li><span class="participant-email">${p}</span> <span class="delete-participant" title="Remove participant" data-activity="${name}" data-email="${p}">🗑️</span></li>`).join("")}
               </ul>
             </div>
           `;
@@ -55,6 +55,29 @@ document.addEventListener("DOMContentLoaded", () => {
         option.textContent = name;
         activitySelect.appendChild(option);
       });
+
+      // 삭제 아이콘 이벤트 위임 (한 번만 등록)
+      if (!activitiesList._deleteHandlerAttached) {
+        activitiesList.addEventListener("click", async (e) => {
+          if (e.target.classList.contains("delete-participant")) {
+            const activity = e.target.getAttribute("data-activity");
+            const email = e.target.getAttribute("data-email");
+            if (confirm(`Remove ${email} from ${activity}?`)) {
+              try {
+                const response = await fetch(`/activities/${encodeURIComponent(activity)}/participants/${encodeURIComponent(email)}`, { method: "DELETE" });
+                if (response.ok) {
+                  fetchActivities();
+                } else {
+                  alert("Failed to remove participant.");
+                }
+              } catch (err) {
+                alert("Error removing participant.");
+              }
+            }
+          }
+        });
+        activitiesList._deleteHandlerAttached = true;
+      }
     } catch (error) {
       activitiesList.innerHTML = "<p>Failed to load activities. Please try again later.</p>";
       console.error("Error fetching activities:", error);
@@ -82,6 +105,7 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        fetchActivities(); // 등록 후 활동 목록 새로고침
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
